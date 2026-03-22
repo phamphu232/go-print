@@ -20,7 +20,6 @@ func setupRoutes() *http.ServeMux {
 	})
 	mux.HandleFunc("/setting/", editSetting)
 	mux.HandleFunc("/setting/update", updateSetting)
-
 	mux.HandleFunc("/pc-info", pcInfo)
 	mux.HandleFunc("/print", print)
 

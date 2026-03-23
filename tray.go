@@ -10,10 +10,10 @@ import (
 	"github.com/getlantern/systray"
 )
 
-//go:embed icons/running.png
+//go:embed icons/running.ico
 var runningIcon []byte
 
-//go:embed icons/stopped.png
+//go:embed icons/stopped.ico
 var stoppedIcon []byte
 
 type AppStatus int

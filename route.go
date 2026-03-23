@@ -1,15 +1,21 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"net/http"
 )
+
+//go:embed favicon.ico
+var faviconFile embed.FS
 
 func setupRoutes() *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "favicon.ico")
+		data, _ := faviconFile.ReadFile("favicon.ico")
+		w.Header().Set("Content-Type", "image/x-icon")
+		w.Write(data)
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		newURL := fmt.Sprintf("http://%s:%d/setting/", setting.Host, setting.Port)

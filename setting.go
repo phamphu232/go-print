@@ -22,11 +22,32 @@ var (
 )
 
 func loadSetting() {
+
+	if _, err := os.Stat(settingFile); os.IsNotExist(err) {
+		setting = Setting{
+			Host:         "127.0.0.1",
+			Port:         6868,
+			RunAtStartup: true,
+			AutoUpdate:   true,
+		}
+
+		data, _ := json.MarshalIndent(setting, "", "    ")
+		err := os.WriteFile(settingFile, data, 0644)
+		if err != nil {
+			log.Printf("Failed to create default setting file: %v", err)
+		}
+		return
+	}
+
 	file, err := os.ReadFile(settingFile)
 	if err != nil {
 		log.Fatal(err)
 	}
-	json.Unmarshal(file, &setting)
+
+	err = json.Unmarshal(file, &setting)
+	if err != nil {
+		log.Fatalf("Failed to parse setting file: %v", err)
+	}
 }
 
 func saveSetting() {

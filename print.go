@@ -1,14 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 )
 
-func pcInfo(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, " @TODO PC-INFO")
+func getPCInfo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	json.NewEncoder(w).Encode(cachedPCInfo)
 }
 
-func print(w http.ResponseWriter, r *http.Request) {
+func Print(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, " @TODO PRINT")
 }

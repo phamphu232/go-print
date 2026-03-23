@@ -8,7 +8,7 @@ func main() {
 	loadSetting()
 	initLogger()
 
-	handleStartup(setting.RunAtStartup)
+	handleStartup()
 	handleUpdate(setting.AutoUpdate)
 
 	systray.Run(onReady, onExit)

@@ -106,3 +106,12 @@ func normalizeText(s string) string {
 
 	return s
 }
+
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if strings.EqualFold(s, item) {
+			return true
+		}
+	}
+	return false
+}

@@ -33,10 +33,10 @@ func (l *dailyLogger) Write(p []byte) (n int, err error) {
 				l.logFile = file
 				l.date = currentDate
 			} else {
-				fmt.Fprintf(os.Stderr, "Failed to open log file: %v\n", err)
+				log.Printf("Failed to open log file: %v\n", err)
 			}
 		} else {
-			fmt.Fprintf(os.Stderr, "Failed to create log directory: %v\n", err)
+			log.Printf("Failed to create log directory: %v\n", err)
 		}
 	}
 

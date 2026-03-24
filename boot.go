@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"runtime"
 )
@@ -25,5 +26,10 @@ func handleStartup() {
 		OSVersion: getOSVersion(),
 		Version:   "0.0.1",
 		Printers:  printers,
+	}
+
+	err := os.MkdirAll("downloads", 0755)
+	if err != nil {
+		log.Printf("Failed to create directory: %v", err)
 	}
 }

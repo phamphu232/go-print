@@ -6,7 +6,7 @@ OUTPUT_DIR="build"
 
 # Define target platforms
 # PLATFORMS=("linux/amd64" "linux/arm64" "windows/amd64" "darwin/amd64" "darwin/arm64")
-PLATFORMS=("darwin/arm64")
+PLATFORMS=("windows/amd64" "linux/amd64")
 
 # Clean up previous builds
 echo "Cleaning up previous builds..."

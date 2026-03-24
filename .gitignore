@@ -34,3 +34,6 @@ go.work.sum
 build/
 tmp/
 logs/
+
+!Ghostscript/*
+!SumatraPDF/*

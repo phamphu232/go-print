@@ -6,10 +6,11 @@ import (
 )
 
 type PCInfo struct {
-	Hostname  string        `json:"pc_id"`
-	OSType    string        `json:"os_type"`
-	OSVersion string        `json:"os_version"`
-	Printers  []PrinterInfo `json:"printers"`
+	Hostname  string   `json:"pc_id"`
+	OSType    string   `json:"os_type"`
+	OSVersion string   `json:"os_version"`
+	Version   string   `json:"version"`
+	Printers  []string `json:"printers"`
 }
 
 var cachedPCInfo PCInfo
@@ -22,6 +23,7 @@ func handleStartup() {
 		Hostname:  hostname,
 		OSType:    runtime.GOOS,
 		OSVersion: getOSVersion(),
+		Version:   "0.0.1",
 		Printers:  printers,
 	}
 }

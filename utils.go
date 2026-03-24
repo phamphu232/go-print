@@ -7,96 +7,59 @@ import (
 	"strings"
 )
 
-type PrinterInfo struct {
-	Name       string `json:"name"`
-	ShareName  string `json:"share_name"`
-	DriverName string `json:"driver_name"`
-	PortName   string `json:"port_name"`
-}
+func getPrinters() ([]string, error) {
+	printerNames := make([]string, 0)
 
-func getPrinters() ([]PrinterInfo, error) {
 	switch runtime.GOOS {
 	case "windows":
-		cmd := strings.Join([]string{
-			`[Console]::OutputEncoding = [System.Text.Encoding]::UTF8`,
-			`Get-Printer | Select Name, ShareName, DriverName, PortName | ConvertTo-Json -Depth 2`,
-		}, ";")
+		cmd := `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-Printer | Select-Object -ExpandProperty Name | ConvertTo-Json`
 
 		out, err := exec.Command("powershell", "-Command", cmd).Output()
 		if err != nil {
-			return nil, err
+			return printerNames, nil
 		}
 
-		var printers []PrinterInfo
 		data := strings.TrimSpace(string(out))
-
-		// handle single object or array
-		if strings.HasPrefix(data, "{") {
-			var single PrinterInfo
-			if err := json.Unmarshal([]byte(data), &single); err != nil {
-				return nil, err
-			}
-			printers = append(printers, single)
-		} else {
-			if err := json.Unmarshal([]byte(data), &printers); err != nil {
-				return nil, err
-			}
+		if data == "" {
+			return printerNames, nil
 		}
 
-		// normalize unicode
-		for i := range printers {
-			printers[i].Name = normalizeText(printers[i].Name)
-			printers[i].ShareName = normalizeText(printers[i].ShareName)
-			printers[i].DriverName = normalizeText(printers[i].DriverName)
-			printers[i].PortName = normalizeText(printers[i].PortName)
+		if strings.HasPrefix(data, "[") {
+			var list []string
+			if err := json.Unmarshal([]byte(data), &list); err == nil {
+				for _, name := range list {
+					printerNames = append(printerNames, normalizeText(name))
+				}
+			}
+		} else if strings.HasPrefix(data, "\"") || !strings.Contains(data, " ") {
+			var single string
+			if err := json.Unmarshal([]byte(data), &single); err == nil {
+				printerNames = append(printerNames, normalizeText(single))
+			} else {
+				printerNames = append(printerNames, normalizeText(strings.Trim(data, "\"")))
+			}
 		}
-
-		return printers, nil
 
 	case "linux", "darwin":
-		out, err := exec.Command("lpstat", "-p", "-l").Output()
+		out, err := exec.Command("lpstat", "-a").Output()
 		if err != nil {
-			return nil, err
+			return printerNames, nil
 		}
 
 		lines := strings.Split(string(out), "\n")
-		var printers []PrinterInfo
-		var current PrinterInfo
-
 		for _, line := range lines {
 			line = strings.TrimSpace(line)
-
-			if strings.HasPrefix(line, "printer ") {
-				if current.Name != "" {
-					printers = append(printers, current)
-				}
-
-				parts := strings.Split(line, " ")
-				if len(parts) >= 2 {
-					current = PrinterInfo{
-						Name: normalizeText(parts[1]),
-					}
-				}
+			if line == "" {
+				continue
 			}
-
-			if strings.Contains(line, "Interface:") {
-				current.DriverName = normalizeText(line)
-			}
-
-			if strings.Contains(line, "device for") {
-				current.PortName = normalizeText(line)
+			parts := strings.Split(line, " ")
+			if len(parts) > 0 {
+				printerNames = append(printerNames, normalizeText(parts[0]))
 			}
 		}
-
-		// add last printer
-		if current.Name != "" {
-			printers = append(printers, current)
-		}
-
-		return printers, nil
 	}
 
-	return nil, nil
+	return printerNames, nil
 }
 
 func getOSVersion() string {

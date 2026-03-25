@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define application name and output directory
-APP_NAME="print-adapter"
+APP_NAME="go-print"
 OUTPUT_DIR="build"
 
 # Define target platforms

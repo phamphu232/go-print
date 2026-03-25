@@ -6,14 +6,16 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 )
 
 type Setting struct {
-	Host         string `json:"host"`
-	Port         int    `json:"port"`
-	RunAtStartup bool   `json:"run_at_startup"`
-	AutoUpdate   bool   `json:"auto_update"`
+	Host             string `json:"host"`
+	Port             int    `json:"port"`
+	RunAtStartup     bool   `json:"run_at_startup"`
+	AutoUpdate       bool   `json:"auto_update"`
+	LogRetentionDays int    `json:"log_retention_days"`
 }
 
 var (
@@ -89,8 +91,10 @@ func editSetting(w http.ResponseWriter, r *http.Request) {
 					width: 100%%;
 				}
 				input[type="text"], input[type="number"] {
-					width: 200px;
 					padding: 5px;
+				}
+				input[type="text"] {
+					width: 200px;
 				}
 				button {
 					padding: 8px 16px;
@@ -129,6 +133,10 @@ func editSetting(w http.ResponseWriter, r *http.Request) {
 							<td><input type="checkbox" name="auto_update" %s></td>
 						</tr>
 						<tr>
+							<td>Log retention:</td>
+							<td><input type="number" name="log_retention_days" placeholder="30" value="%d" min="0" max="65535" width="50px">&nbsp;days</td>
+						</tr>
+						<tr>
 							<td></td>
 							<td>
 								<button type="submit">Save</button>
@@ -145,6 +153,7 @@ func editSetting(w http.ResponseWriter, r *http.Request) {
 		setting.Port,
 		checked(setting.RunAtStartup),
 		checked(setting.AutoUpdate),
+		setting.LogRetentionDays,
 		func() string {
 			if status == "1" && ref != "" && (strings.Contains(ref, "localhost") || strings.Contains(ref, "127.0.0.1") || strings.Contains(ref, "0.0.0.0")) {
 				return fmt.Sprintf(`<span style="color:green;">%s</span>`, "Saved successfully.")
@@ -172,6 +181,7 @@ func updateSetting(w http.ResponseWriter, r *http.Request) {
 
 	setting.RunAtStartup = r.FormValue("run_at_startup") == "on"
 	setting.AutoUpdate = r.FormValue("auto_update") == "on"
+	setting.LogRetentionDays, _ = strconv.Atoi(r.FormValue("log_retention_days"))
 
 	saveSetting()
 

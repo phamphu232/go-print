@@ -2,5 +2,6 @@
     "host": "127.0.0.1",
     "port": 6868,
     "run_at_startup": true,
-    "auto_update": true
+    "auto_update": true,
+    "log_retention_days": 30
 }

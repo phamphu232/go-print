@@ -1,4 +1,4 @@
-module print-adapter
+module go-print
 
 go 1.25
 

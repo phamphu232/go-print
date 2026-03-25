@@ -7,11 +7,12 @@ import (
 )
 
 type PCInfo struct {
-	Hostname  string   `json:"pc_id"`
-	OSType    string   `json:"os_type"`
-	OSVersion string   `json:"os_version"`
-	Version   string   `json:"version"`
-	Printers  []string `json:"printers"`
+	AppVersion string   `json:"app_version"`
+	Hostname   string   `json:"pc_id"`
+	OSPlatform string   `json:"os_platform"`
+	OSVersion  string   `json:"os_version"`
+	OSArch     string   `json:"os_arch"`
+	Printers   []string `json:"printers"`
 }
 
 var cachedPCInfo PCInfo
@@ -21,11 +22,12 @@ func handleStartup() {
 	printers, _ := getPrinters()
 
 	cachedPCInfo = PCInfo{
-		Hostname:  hostname,
-		OSType:    runtime.GOOS,
-		OSVersion: getOSVersion(),
-		Version:   "0.0.1",
-		Printers:  printers,
+		AppVersion: "0.0.1",
+		Hostname:   hostname,
+		OSPlatform: runtime.GOOS,
+		OSArch:     runtime.GOARCH,
+		OSVersion:  getOSVersion(),
+		Printers:   printers,
 	}
 
 	err := os.MkdirAll("downloads", 0755)

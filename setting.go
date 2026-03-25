@@ -143,10 +143,12 @@ func editSetting(w http.ResponseWriter, r *http.Request) {
 							<td>Run on startup:</td>
 							<td><input type="checkbox" name="run_at_startup" %s></td>
 						</tr>
+						<!--
 						<tr>
 							<td>Auto update:</td>
 							<td><input type="checkbox" name="auto_update" %s></td>
 						</tr>
+						-->
 						<tr>
 							<td>Log retention:</td>
 							<td><input type="number" name="log_retention_days" placeholder="30" value="%d" min="0" max="65535" width="50px">&nbsp;days</td>

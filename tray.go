@@ -43,7 +43,7 @@ func updateUIByStatus(status AppStatus) {
 	switch status {
 	case StatusRunning:
 		systray.SetIcon(runningIcon)
-		systray.SetTooltip("Print Adapter: Running")
+		systray.SetTooltip("Go Print: Running")
 		menuStatus.SetTitle(fmt.Sprintf("Listen: %s:%d", setting.Host, setting.Port))
 
 		menuStart.Hide()
@@ -55,8 +55,8 @@ func updateUIByStatus(status AppStatus) {
 
 	case StatusStopped:
 		systray.SetIcon(stoppedIcon)
-		systray.SetTooltip("Print Adapter: Stopped")
-		menuStatus.SetTitle("Stopped")
+		systray.SetTooltip("Go Print: Stopped")
+		menuStatus.SetTitle("Go Print: Stopped")
 
 		menuStart.Show()
 		menuStop.Hide()
@@ -68,7 +68,7 @@ func updateUIByStatus(status AppStatus) {
 
 func onReady() {
 	systray.SetIcon(runningIcon)
-	systray.SetTooltip("Print Adapter")
+	systray.SetTooltip("Go Print: Running")
 
 	menuStatus = systray.AddMenuItem(
 		fmt.Sprintf("Listening port: %d", setting.Port),

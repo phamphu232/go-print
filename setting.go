@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -16,6 +17,7 @@ type Setting struct {
 	RunAtStartup     bool   `json:"run_at_startup"`
 	AutoUpdate       bool   `json:"auto_update"`
 	LogRetentionDays int    `json:"log_retention_days"`
+	PrintProcessor   string `json:"print_processor"`
 }
 
 var (
@@ -27,10 +29,12 @@ func loadSetting() {
 
 	if _, err := os.Stat(settingFile); os.IsNotExist(err) {
 		setting = Setting{
-			Host:         "127.0.0.1",
-			Port:         6868,
-			RunAtStartup: true,
-			AutoUpdate:   true,
+			Host:             "127.0.0.1",
+			Port:             6868,
+			RunAtStartup:     true,
+			AutoUpdate:       true,
+			LogRetentionDays: 30,
+			PrintProcessor:   "",
 		}
 
 		data, _ := json.MarshalIndent(setting, "", "    ")
@@ -60,6 +64,13 @@ func saveSetting() {
 func editSetting(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
 	ref := r.Referer()
+	processorOptions := ""
+	if runtime.GOOS == "windows" {
+		processorOptions = fmt.Sprintf("<option value=\"ghostscript\" %s>Ghostscript</option>", selected(setting.PrintProcessor, "ghostscript"))
+		processorOptions += fmt.Sprintf("<option value=\"sumatra-pdf\" %s>Sumatra-PDF</option>", selected(setting.PrintProcessor, "sumatra-pdf"))
+	} else {
+		processorOptions = fmt.Sprintf("<option value=\"cups\" %s>CUPS</option>", selected(setting.PrintProcessor, "cups"))
+	}
 
 	fmt.Fprintf(
 		w,
@@ -90,7 +101,7 @@ func editSetting(w http.ResponseWriter, r *http.Request) {
 				table {
 					width: 100%%;
 				}
-				input[type="text"], input[type="number"] {
+				input[type="text"], input[type="number"], select {
 					padding: 5px;
 				}
 				input[type="text"] {
@@ -125,6 +136,10 @@ func editSetting(w http.ResponseWriter, r *http.Request) {
 							<td><input type="number" name="port" placeholder="6868" value="%d" min="1" max="65535"></td>
 						</tr>
 						<tr>
+							<td>Print processor:</td>
+							<td><select name="print_processor">%s</select></td>
+						</tr>
+						<tr>
 							<td>Run on startup:</td>
 							<td><input type="checkbox" name="run_at_startup" %s></td>
 						</tr>
@@ -151,6 +166,7 @@ func editSetting(w http.ResponseWriter, r *http.Request) {
 		`,
 		setting.Host,
 		setting.Port,
+		processorOptions,
 		checked(setting.RunAtStartup),
 		checked(setting.AutoUpdate),
 		setting.LogRetentionDays,
@@ -182,6 +198,7 @@ func updateSetting(w http.ResponseWriter, r *http.Request) {
 	setting.RunAtStartup = r.FormValue("run_at_startup") == "on"
 	setting.AutoUpdate = r.FormValue("auto_update") == "on"
 	setting.LogRetentionDays, _ = strconv.Atoi(r.FormValue("log_retention_days"))
+	setting.PrintProcessor = r.FormValue("print_processor")
 
 	saveSetting()
 
@@ -202,6 +219,13 @@ func updateSetting(w http.ResponseWriter, r *http.Request) {
 func checked(v bool) string {
 	if v {
 		return "checked"
+	}
+	return ""
+}
+
+func selected(v string, value string) string {
+	if v == value {
+		return "selected"
 	}
 	return ""
 }

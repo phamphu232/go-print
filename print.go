@@ -73,7 +73,7 @@ func Print(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Print request: %s", string(jsonData))
 
 	saveFilePath := ""
-	if fileURL, ok := requestParams["file_url"].(string); ok && fileURL != "" {
+	if fileURL, hasFileURL := requestParams["file_url"].(string); hasFileURL && fileURL != "" {
 		saveFilePath, err = downloadFile(fileURL, "./downloads")
 		if err != nil {
 			message = fmt.Sprintf("Failed to download file: %s, %v", fileURL, err)
@@ -193,19 +193,136 @@ func downloadFile(url string, saveDir string) (string, error) {
 	return destPath, nil
 }
 
-func buildPrintCommandWithCUPS(requestParams map[string]interface{}, saveFilePath string) string {
-	// @Todo
-	return saveFilePath
+func buildPrintCommandWithCUPS(requestParams map[string]interface{}, filePath string) string {
+	// Ref: https://www.cups.org/doc/man-lp.html
+	var options []string
+
+	printerName, _ := requestParams["printer_name"].(string)
+	if printerName != "" {
+		options = append(options, fmt.Sprintf("-d \"%s\"", printerName))
+	}
+	if copies, ok := requestParams["copies"].(int); ok && copies > 1 {
+		options = append(options, fmt.Sprintf("-n %d", copies))
+	}
+	if pageList, ok := requestParams["page_list"].(string); ok && pageList != "" {
+		options = append(options, fmt.Sprintf("-P %s", pageList))
+	}
+	if orientation, ok := requestParams["orientation"].(string); ok && orientation != "" {
+		options = append(options, fmt.Sprintf("-o orientation-requested=%s", orientation))
+	}
+	if duplex, ok := requestParams["duplex"].(string); ok && duplex != "" {
+		options = append(options, fmt.Sprintf("-o sides=%s", duplex))
+	}
+	if paperSize, ok := requestParams["paper_size"].(string); ok && paperSize != "" {
+		options = append(options, fmt.Sprintf("-o media=%s", paperSize))
+	}
+	if otherSettings, ok := requestParams["other_settings"].(string); ok && otherSettings != "" {
+		options = append(options, fmt.Sprintf("-o %s", otherSettings))
+	}
+
+	printCommand := fmt.Sprintf("lp %s \"%s\"", strings.Join(options, " "), filePath)
+
+	return printCommand
 }
 
-func buildPrintCommandWithGhostscript(requestParams map[string]interface{}, saveFilePath string) string {
-	// @Todo
-	return saveFilePath
+func buildPrintCommandWithGhostscript(requestParams map[string]interface{}, filePath string) string {
+	archNumber := strings.TrimLeft(runtime.GOARCH, "abcdefghijklmnopqrstuvwxyz")
+	gsExe := "gs"
+	if runtime.GOOS == "windows" {
+		gsExe = fmt.Sprintf("gswin%sc.exe", archNumber)
+	}
+
+	var gsOptions []string
+	gsOptions = append(gsOptions, "-dPrinted")
+	gsOptions = append(gsOptions, "-dNoCancel")
+	gsOptions = append(gsOptions, "-dBATCH")
+	gsOptions = append(gsOptions, "-dNOPAUSE")
+	gsOptions = append(gsOptions, "-dNOPROMPT")
+	gsOptions = append(gsOptions, "-dNOSAFER")
+
+	printerName, _ := requestParams["printer_name"].(string)
+	if printerName != "" {
+		gsOptions = append(gsOptions, "-sDEVICE=mswinpr2")
+		gsOptions = append(gsOptions, fmt.Sprintf("-sOutputFile=\"%%printer%%%s\"", printerName))
+	}
+
+	if paperSize, ok := requestParams["paper_size"].(string); ok && paperSize != "" {
+		gsOptions = append(gsOptions, fmt.Sprintf("-sPAPERSIZE=%s", strings.ToLower(paperSize)))
+	}
+	if pageList, ok := requestParams["page_list"].(string); ok && pageList != "" {
+		gsOptions = append(gsOptions, pageList)
+	}
+
+	if otherOptions, ok := requestParams["other_options"].(string); ok && otherOptions != "" {
+		gsOptions = append(gsOptions, otherOptions)
+	}
+
+	printCommand := fmt.Sprintf("%s %s -f \"%s\"", gsExe, strings.Join(gsOptions, " "), filePath)
+
+	return printCommand
 }
 
-func buildPrintCommandWithSumatraPDF(requestParams map[string]interface{}, saveFilePath string) string {
-	// @Todo
-	return saveFilePath
+func buildPrintCommandWithSumatraPDF(requestParams map[string]interface{}, filePath string) string {
+	// Ref: https://www.sumatrapdfreader.org/docs/Command-line-arguments
+	var printCommand string
+
+	var printSettings []string
+
+	if pageList, ok := requestParams["page_list"].(string); ok && pageList != "" {
+		printSettings = append(printSettings, pageList)
+	}
+
+	if orientation, ok := requestParams["orientation"].(string); ok && orientation != "" {
+		printSettings = append(printSettings, orientation)
+	}
+
+	if scale, ok := requestParams["scale"].(string); ok && scale != "" {
+		printSettings = append(printSettings, scale)
+	}
+
+	if color, ok := requestParams["color"].(string); ok && color != "" {
+		printSettings = append(printSettings, color)
+	}
+
+	if duplex, ok := requestParams["duplex"].(string); ok && duplex != "" {
+		printSettings = append(printSettings, duplex)
+	}
+
+	if bin, ok := requestParams["bin"].(string); ok && bin != "" {
+		printSettings = append(printSettings, bin)
+	}
+
+	if paperSize, ok := requestParams["paper_size"].(string); ok && paperSize != "" {
+		printSettings = append(printSettings, paperSize)
+	}
+
+	if copies, ok := requestParams["copies"].(int); ok && copies > 0 {
+		printSettings = append(printSettings, fmt.Sprintf("%dx", copies))
+	}
+
+	if otherSettings, ok := requestParams["other_settings"].(string); ok && otherSettings != "" {
+		printSettings = append(printSettings, otherSettings)
+	}
+
+	otherOptions, _ := requestParams["other_options"].(string)
+
+	archNumber := strings.TrimLeft(runtime.GOARCH, "abcdefghijklmnopqrstuvwxyz")
+
+	pwd, err := os.Getwd()
+	exePath := fmt.Sprintf("\\bin\\SumatraPDF%s.exe", archNumber)
+	if err == nil {
+		exePath = filepath.Join(pwd, fmt.Sprintf("\\bin\\SumatraPDF%s.exe", archNumber))
+	}
+
+	printerName, _ := requestParams["printer_name"].(string)
+
+	printCommand = fmt.Sprintf("%s", exePath)
+	printCommand += fmt.Sprintf(" -print-to \"%s\"", printerName)
+	printCommand += fmt.Sprintf(" -print-settings \"%s\"", strings.Join(printSettings, ","))
+	printCommand += fmt.Sprintf(" -silent -exit-when-done %s", otherOptions)
+	printCommand += fmt.Sprintf(" \"%s\"", filePath)
+
+	return printCommand
 }
 
 func sendCallback(url string, payload map[string]interface{}) {

@@ -19,10 +19,14 @@ func (w *statusWriter) WriteHeader(status int) {
 // logRequestMiddleware intercepts HTTP requests to log them
 func logRequestMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("--> Incoming Request: %s %s %s", r.RemoteAddr, r.Method, r.URL.RequestURI())
+
 		start := time.Now()
 		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
+
 		next.ServeHTTP(sw, r)
-		log.Printf("%s %s %s %d %v", r.RemoteAddr, r.Method, r.URL.RequestURI(), sw.status, time.Since(start))
+
+		log.Printf("<-- Completed: %s %s %d %v", r.Method, r.URL.RequestURI(), sw.status, time.Since(start))
 	})
 }
 

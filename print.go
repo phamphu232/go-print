@@ -38,11 +38,22 @@ func Print(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var jsonMap map[string]interface{}
-	err := json.NewDecoder(r.Body).Decode(&jsonMap)
-	if err == nil {
-		for k, v := range jsonMap {
-			requestParams[k] = v
+	contentType := r.Header.Get("Content-Type")
+	if strings.Contains(contentType, "application/json") {
+		var jsonMap map[string]interface{}
+		err := json.NewDecoder(r.Body).Decode(&jsonMap)
+		if err == nil {
+			for k, v := range jsonMap {
+				requestParams[k] = v
+			}
+		}
+	} else {
+		r.ParseForm()
+
+		for k, v := range r.Form {
+			if len(v) > 0 {
+				requestParams[k] = v[0]
+			}
 		}
 	}
 
@@ -73,7 +84,7 @@ func Print(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Print request: %s", string(jsonData))
 
 	saveFilePath := ""
-	if fileURL, hasFileURL := requestParams["file_url"].(string); hasFileURL && fileURL != "" {
+	if fileURL, ok := requestParams["file_url"].(string); ok && fileURL != "" {
 		saveFilePath, err = downloadFile(fileURL, "./downloads")
 		if err != nil {
 			message = fmt.Sprintf("Failed to download file: %s, %v", fileURL, err)
@@ -90,7 +101,8 @@ func Print(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if printCommand, hasRequestPrintCommand := requestParams["print_command"].(string); hasRequestPrintCommand && printCommand != "" {
+	// Prefer print command from request
+	if printCommand, ok := requestParams["print_command"].(string); ok && printCommand != "" {
 		printCommand = fmt.Sprintf("%s %s", printCommand, saveFilePath)
 	} else {
 		switch runtime.GOOS {
@@ -114,7 +126,10 @@ func Print(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if printCommand != "" && saveFilePath != "" {
+	log.Printf("Print command: %s", printCommand)
+	fmt.Fprintln(w, "Print command: ", printCommand)
+
+	if printCommand != "" {
 		out, err := exec.Command(printCommand).Output()
 		if err != nil {
 			message = fmt.Sprintf("Failed to print file: %s, %v", saveFilePath, err)
@@ -198,6 +213,9 @@ func buildPrintCommandWithCUPS(requestParams map[string]interface{}, filePath st
 	var options []string
 
 	printerName, _ := requestParams["printer_name"].(string)
+	if printerName == "" {
+		printerName, _ = requestParams["printer_id"].(string)
+	}
 	if printerName != "" {
 		options = append(options, fmt.Sprintf("-d \"%s\"", printerName))
 	}
@@ -208,16 +226,19 @@ func buildPrintCommandWithCUPS(requestParams map[string]interface{}, filePath st
 		options = append(options, fmt.Sprintf("-P %s", pageList))
 	}
 	if orientation, ok := requestParams["orientation"].(string); ok && orientation != "" {
-		options = append(options, fmt.Sprintf("-o orientation-requested=%s", orientation))
+		options = append(options, fmt.Sprintf("-o %s", orientation))
 	}
 	if duplex, ok := requestParams["duplex"].(string); ok && duplex != "" {
-		options = append(options, fmt.Sprintf("-o sides=%s", duplex))
+		options = append(options, fmt.Sprintf("-o %s", duplex))
 	}
 	if paperSize, ok := requestParams["paper_size"].(string); ok && paperSize != "" {
 		options = append(options, fmt.Sprintf("-o media=%s", paperSize))
 	}
 	if otherSettings, ok := requestParams["other_settings"].(string); ok && otherSettings != "" {
-		options = append(options, fmt.Sprintf("-o %s", otherSettings))
+		options = append(options, otherSettings)
+	}
+	if otherOptions, ok := requestParams["other_options"].(string); ok && otherOptions != "" {
+		options = append(options, otherOptions)
 	}
 
 	printCommand := fmt.Sprintf("lp %s \"%s\"", strings.Join(options, " "), filePath)
@@ -227,20 +248,25 @@ func buildPrintCommandWithCUPS(requestParams map[string]interface{}, filePath st
 
 func buildPrintCommandWithGhostscript(requestParams map[string]interface{}, filePath string) string {
 	archNumber := strings.TrimLeft(runtime.GOARCH, "abcdefghijklmnopqrstuvwxyz")
+
+	pwd, err := os.Getwd()
 	gsExe := "gs"
-	if runtime.GOOS == "windows" {
-		gsExe = fmt.Sprintf("gswin%sc.exe", archNumber)
+	if err == nil {
+		gsExe = filepath.Join(pwd, fmt.Sprintf("\\bin\\gswin%sc.exe", archNumber))
 	}
 
 	var gsOptions []string
-	gsOptions = append(gsOptions, "-dPrinted")
-	gsOptions = append(gsOptions, "-dNoCancel")
-	gsOptions = append(gsOptions, "-dBATCH")
 	gsOptions = append(gsOptions, "-dNOPAUSE")
 	gsOptions = append(gsOptions, "-dNOPROMPT")
-	gsOptions = append(gsOptions, "-dNOSAFER")
+	gsOptions = append(gsOptions, "-dNoCancel")
+	gsOptions = append(gsOptions, "-dSAFER")
+	gsOptions = append(gsOptions, "-dBATCH")
 
 	printerName, _ := requestParams["printer_name"].(string)
+	if printerName == "" {
+		printerName, _ = requestParams["printer_id"].(string)
+	}
+
 	if printerName != "" {
 		gsOptions = append(gsOptions, "-sDEVICE=mswinpr2")
 		gsOptions = append(gsOptions, fmt.Sprintf("-sOutputFile=\"%%printer%%%s\"", printerName))
@@ -248,9 +274,26 @@ func buildPrintCommandWithGhostscript(requestParams map[string]interface{}, file
 
 	if paperSize, ok := requestParams["paper_size"].(string); ok && paperSize != "" {
 		gsOptions = append(gsOptions, fmt.Sprintf("-sPAPERSIZE=%s", strings.ToLower(paperSize)))
+	} else if pageWith, ok := requestParams["page_width"].(string); ok && pageWith != "" {
+		if pageHeight, ok := requestParams["page_height"].(string); ok && pageHeight != "" {
+			gsOptions = append(gsOptions, "-dFIXEDMEDIA")
+			gsOptions = append(gsOptions, "-dPDFFitPage")
+			gsOptions = append(gsOptions, fmt.Sprintf("-dDEVICEWIDTHPOINTS=%s", pageWith))
+			gsOptions = append(gsOptions, fmt.Sprintf("-dDEVICEHEIGHTPOINTS=%s", pageHeight))
+		}
 	}
+
+	if orientation, ok := requestParams["orientation"].(string); ok && orientation != "" {
+		switch strings.ToLower(orientation) {
+		case "landscape":
+			gsOptions = append(gsOptions, "-c \"<</Orientation 3>> setpagedevice\"")
+		case "portrait":
+			gsOptions = append(gsOptions, "-c \"<</Orientation 1>> setpagedevice\"")
+		}
+	}
+
 	if pageList, ok := requestParams["page_list"].(string); ok && pageList != "" {
-		gsOptions = append(gsOptions, pageList)
+		gsOptions = append(gsOptions, fmt.Sprintf("-sPageList=%s", pageList))
 	}
 
 	if otherOptions, ok := requestParams["other_options"].(string); ok && otherOptions != "" {
@@ -315,6 +358,9 @@ func buildPrintCommandWithSumatraPDF(requestParams map[string]interface{}, fileP
 	}
 
 	printerName, _ := requestParams["printer_name"].(string)
+	if printerName == "" {
+		printerName, _ = requestParams["printer_id"].(string)
+	}
 
 	printCommand = fmt.Sprintf("%s", exePath)
 	printCommand += fmt.Sprintf(" -print-to \"%s\"", printerName)

@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -69,11 +70,16 @@ func Print(w http.ResponseWriter, r *http.Request) {
 			requestParams["message"] = message
 			requestParams["print_command"] = printCommand
 
+			jsonCallbackRequestParams, err := json.Marshal(requestParams)
+			if err == nil {
+				log.Printf("Callback Request params: %s", string(jsonCallbackRequestParams))
+			}
+
 			sendCallback(callbackURL, requestParams)
 		}
 	}()
 
-	jsonData, err := json.MarshalIndent(requestParams, "", "  ")
+	jsonRequestParams, err := json.Marshal(requestParams)
 	if err != nil {
 		message = fmt.Sprintf("Failed to marshal params: %v", err)
 		log.Printf("%s", message)
@@ -81,13 +87,14 @@ func Print(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Print request: %s", string(jsonData))
+	log.Printf("Print request: %s", string(jsonRequestParams))
 
 	saveFilePath := ""
 	if fileURL, ok := requestParams["file_url"].(string); ok && fileURL != "" {
-		saveFilePath, err = downloadFile(fileURL, "./downloads")
+		pwd, err := os.Getwd()
+		saveFilePath, err = downloadFile(fileURL, filepath.Join(pwd, "downloads"))
 		if err != nil {
-			message = fmt.Sprintf("Failed to download file: %s, %v", fileURL, err)
+			message = fmt.Sprintf("⚠️ Failed to download file: %s, %v", fileURL, err)
 			log.Printf("%s", message)
 			fmt.Fprintln(w, message)
 			return
@@ -102,8 +109,9 @@ func Print(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Prefer print command from request
-	if printCommand, ok := requestParams["print_command"].(string); ok && printCommand != "" {
-		printCommand = fmt.Sprintf("%s %s", printCommand, saveFilePath)
+	pCmd, _ := requestParams["print_command"].(string)
+	if pCmd != "" {
+		printCommand = fmt.Sprintf("%s %s", pCmd, saveFilePath)
 	} else {
 		switch runtime.GOOS {
 		case "windows":
@@ -141,20 +149,21 @@ func Print(w http.ResponseWriter, r *http.Request) {
 		out, err := cmd.CombinedOutput()
 
 		if err != nil {
-			message = fmt.Sprintf("Failed to print file: %s, %v", saveFilePath, err)
+			message = fmt.Sprintf("⚠️ Failed to print file: %s, Error: %v", saveFilePath, err)
 			log.Printf("%s", message)
 			fmt.Fprintln(w, message)
 			return
 		}
 
 		status = 1
-		message = fmt.Sprintf("File printed successfully: %s", string(out))
+		message = fmt.Sprintf("✅ File printed successfully!, 🖨️ Output: %s", string(out))
 		log.Printf("%s", message)
 		fmt.Fprintln(w, message)
 	}
 
-	deleteAfterPrint, hasRequestDeleteAfterPrint := requestParams["delete_after_print"].(bool)
-	if hasRequestDeleteAfterPrint && deleteAfterPrint {
+	deleteAfterStr, _ := requestParams["delete_after_print"].(string)
+	deleteAfterPrint, err := strconv.ParseBool(deleteAfterStr)
+	if err == nil && deleteAfterPrint {
 		err := os.Remove(saveFilePath)
 		if err != nil {
 			message = fmt.Sprintf("Failed to delete file: %s, %v", saveFilePath, err)
@@ -165,8 +174,7 @@ func Print(w http.ResponseWriter, r *http.Request) {
 }
 
 func downloadFile(url string, saveDir string) (string, error) {
-	today := time.Now().Format("2006/01/02")
-	todayDir := filepath.Join(saveDir, today)
+	todayDir := filepath.Join(saveDir, todayDir())
 
 	err := os.MkdirAll(todayDir, 0755)
 	if err != nil {
@@ -175,7 +183,7 @@ func downloadFile(url string, saveDir string) (string, error) {
 
 	fileName := filepath.Base(url)
 	if fileName == "" || fileName == "." || fileName == "/" {
-		fileName = "downloaded_file"
+		fileName = "unknown"
 	}
 
 	destPath := filepath.Join(todayDir, fileName)
@@ -185,7 +193,7 @@ func downloadFile(url string, saveDir string) (string, error) {
 		baseName := strings.TrimSuffix(fileName, ext)
 		counter := 1
 		for {
-			newFileName := fmt.Sprintf("%s (%d)%s", baseName, counter, ext)
+			newFileName := fmt.Sprintf("%s(%d)%s", baseName, counter, ext)
 			destPath = filepath.Join(todayDir, newFileName)
 			if _, err := os.Stat(destPath); os.IsNotExist(err) {
 				break
@@ -264,7 +272,7 @@ func buildPrintCommandWithGhostscript(requestParams map[string]interface{}, file
 	pwd, err := os.Getwd()
 	gsExe := "gs"
 	if err == nil {
-		gsExe = filepath.Join(pwd, fmt.Sprintf("\\bin\\gswin%sc.exe", archNumber))
+		gsExe = filepath.Join(pwd, "bin", fmt.Sprintf("gswin%sc.exe", archNumber))
 	}
 
 	var gsOptions []string
@@ -364,9 +372,9 @@ func buildPrintCommandWithSumatraPDF(requestParams map[string]interface{}, fileP
 	archNumber := strings.TrimLeft(runtime.GOARCH, "abcdefghijklmnopqrstuvwxyz")
 
 	pwd, err := os.Getwd()
-	exePath := fmt.Sprintf("\\bin\\SumatraPDF%s.exe", archNumber)
+	exePath := fmt.Sprintf("SumatraPDF%s.exe", archNumber)
 	if err == nil {
-		exePath = filepath.Join(pwd, fmt.Sprintf("\\bin\\SumatraPDF%s.exe", archNumber))
+		exePath = filepath.Join(pwd, "bin", fmt.Sprintf("SumatraPDF%s.exe", archNumber))
 	}
 
 	printerName, _ := requestParams["printer_name"].(string)

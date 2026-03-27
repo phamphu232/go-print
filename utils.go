@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 func getPrinters() ([]string, error) {
@@ -114,4 +116,8 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+func todayDir() string {
+	return filepath.Join(time.Now().Format("2006"), time.Now().Format("01"), time.Now().Format("02"))
 }

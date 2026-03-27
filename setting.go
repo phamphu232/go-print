@@ -28,13 +28,17 @@ var (
 func loadSetting() {
 
 	if _, err := os.Stat(settingFile); os.IsNotExist(err) {
+		defaultPrintProcessor := "cups"
+		if runtime.GOOS == "windows" {
+			defaultPrintProcessor = "ghostscript"
+		}
 		setting = Setting{
 			Host:             "127.0.0.1",
 			Port:             6868,
 			RunAtStartup:     true,
 			AutoUpdate:       true,
 			LogRetentionDays: 30,
-			PrintProcessor:   "",
+			PrintProcessor:   defaultPrintProcessor,
 		}
 
 		data, _ := json.MarshalIndent(setting, "", "    ")

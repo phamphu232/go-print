@@ -32,7 +32,9 @@ go.work.sum
 # .vscode/
 
 build/
-tmp/
+downloads/
 logs/
+setting.json
+tmp/
 
 !bin/*

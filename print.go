@@ -130,13 +130,23 @@ func Print(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Print command: ", printCommand)
 
 	if printCommand != "" {
-		out, err := exec.Command(printCommand).Output()
+		var cmd *exec.Cmd
+
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("cmd", "/C", printCommand)
+		} else {
+			cmd = exec.Command("sh", "-c", printCommand)
+		}
+
+		out, err := cmd.CombinedOutput()
+
 		if err != nil {
 			message = fmt.Sprintf("Failed to print file: %s, %v", saveFilePath, err)
 			log.Printf("%s", message)
 			fmt.Fprintln(w, message)
 			return
 		}
+
 		status = 1
 		message = fmt.Sprintf("File printed successfully: %s", string(out))
 		log.Printf("%s", message)
@@ -190,7 +200,9 @@ func downloadFile(url string, saveDir string) (string, error) {
 	}
 	defer out.Close()
 
-	resp, err := http.Get(url)
+	client := &http.Client{Timeout: 180 * time.Second}
+	resp, err := client.Get(url)
+
 	if err != nil {
 		return "", fmt.Errorf("Failed to download file: %v", err)
 	}

@@ -91,8 +91,7 @@ func Print(w http.ResponseWriter, r *http.Request) {
 
 	saveFilePath := ""
 	if fileURL, ok := requestParams["file_url"].(string); ok && fileURL != "" {
-		pwd, err := os.Getwd()
-		saveFilePath, err = downloadFile(fileURL, filepath.Join(pwd, "downloads"))
+		saveFilePath, err = downloadFile(fileURL, filepath.Join(baseDir(), "downloads"))
 		if err != nil {
 			message = fmt.Sprintf("⚠️ Failed to download file: %s, %v", fileURL, err)
 			log.Printf("%s", message)
@@ -236,27 +235,35 @@ func buildPrintCommandWithCUPS(requestParams map[string]interface{}, filePath st
 	if printerName == "" {
 		printerName, _ = requestParams["printer_id"].(string)
 	}
+
 	if printerName != "" {
 		options = append(options, fmt.Sprintf("-d \"%s\"", printerName))
 	}
+
 	if copies, ok := requestParams["copies"].(int); ok && copies > 1 {
 		options = append(options, fmt.Sprintf("-n %d", copies))
 	}
+
 	if pageList, ok := requestParams["page_list"].(string); ok && pageList != "" {
 		options = append(options, fmt.Sprintf("-P %s", pageList))
 	}
+
 	if orientation, ok := requestParams["orientation"].(string); ok && orientation != "" {
 		options = append(options, fmt.Sprintf("-o %s", orientation))
 	}
+
 	if duplex, ok := requestParams["duplex"].(string); ok && duplex != "" {
 		options = append(options, fmt.Sprintf("-o %s", duplex))
 	}
+
 	if paperSize, ok := requestParams["paper_size"].(string); ok && paperSize != "" {
 		options = append(options, fmt.Sprintf("-o media=%s", paperSize))
 	}
+
 	if otherSettings, ok := requestParams["other_settings"].(string); ok && otherSettings != "" {
 		options = append(options, otherSettings)
 	}
+
 	if otherOptions, ok := requestParams["other_options"].(string); ok && otherOptions != "" {
 		options = append(options, otherOptions)
 	}
@@ -269,11 +276,7 @@ func buildPrintCommandWithCUPS(requestParams map[string]interface{}, filePath st
 func buildPrintCommandWithGhostscript(requestParams map[string]interface{}, filePath string) string {
 	archNumber := strings.TrimLeft(runtime.GOARCH, "abcdefghijklmnopqrstuvwxyz")
 
-	pwd, err := os.Getwd()
-	gsExe := "gs"
-	if err == nil {
-		gsExe = filepath.Join(pwd, "bin", fmt.Sprintf("gswin%sc.exe", archNumber))
-	}
+	gsExe := filepath.Join(baseDir(), "bin", fmt.Sprintf("gswin%sc.exe", archNumber))
 
 	var gsOptions []string
 	gsOptions = append(gsOptions, "-dNOPAUSE")
@@ -371,11 +374,7 @@ func buildPrintCommandWithSumatraPDF(requestParams map[string]interface{}, fileP
 
 	archNumber := strings.TrimLeft(runtime.GOARCH, "abcdefghijklmnopqrstuvwxyz")
 
-	pwd, err := os.Getwd()
-	exePath := fmt.Sprintf("SumatraPDF%s.exe", archNumber)
-	if err == nil {
-		exePath = filepath.Join(pwd, "bin", fmt.Sprintf("SumatraPDF%s.exe", archNumber))
-	}
+	exePath := filepath.Join(baseDir(), "bin", fmt.Sprintf("SumatraPDF%s.exe", archNumber))
 
 	printerName, _ := requestParams["printer_name"].(string)
 	if printerName == "" {

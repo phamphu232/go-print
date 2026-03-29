@@ -25,7 +25,7 @@ func (l *dailyLogger) Write(p []byte) (n int, err error) {
 
 		year := now.Format("2006")
 		month := now.Format("01")
-		logDir := filepath.Join("logs", year, month)
+		logDir := filepath.Join(baseDir(), "logs", year, month)
 
 		if err := os.MkdirAll(logDir, 0755); err == nil {
 			logPath := filepath.Join(logDir, fmt.Sprintf("%s.log", currentDate))

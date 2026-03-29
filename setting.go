@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -20,14 +22,16 @@ type Setting struct {
 	PrintProcessor   string `json:"print_processor"`
 }
 
-var (
-	settingFile = "setting.json"
-	setting     Setting
-)
+var setting Setting
+
+func settingFilePath() string {
+	return filepath.Join(baseDir(), "setting.json")
+}
 
 func loadSetting() {
+	settingFilePath := settingFilePath()
 
-	if _, err := os.Stat(settingFile); os.IsNotExist(err) {
+	if _, err := os.Stat(settingFilePath); os.IsNotExist(err) {
 		defaultPrintProcessor := "cups"
 		if runtime.GOOS == "windows" {
 			defaultPrintProcessor = "ghostscript"
@@ -42,14 +46,14 @@ func loadSetting() {
 		}
 
 		data, _ := json.MarshalIndent(setting, "", "    ")
-		err := os.WriteFile(settingFile, data, 0644)
+		err := os.WriteFile(settingFilePath, data, 0644)
 		if err != nil {
 			log.Printf("Failed to create default setting file: %v", err)
 		}
 		return
 	}
 
-	file, err := os.ReadFile(settingFile)
+	file, err := os.ReadFile(settingFilePath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -62,7 +66,7 @@ func loadSetting() {
 
 func saveSetting() {
 	data, _ := json.MarshalIndent(setting, "", "    ")
-	os.WriteFile(settingFile, data, 0644)
+	os.WriteFile(settingFilePath(), data, 0644)
 }
 
 func editSetting(w http.ResponseWriter, r *http.Request) {
@@ -189,6 +193,8 @@ func editSetting(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateSetting(w http.ResponseWriter, r *http.Request) {
+	status := 1
+
 	settingOld := setting
 
 	r.ParseForm()
@@ -206,9 +212,15 @@ func updateSetting(w http.ResponseWriter, r *http.Request) {
 	setting.LogRetentionDays, _ = strconv.Atoi(r.FormValue("log_retention_days"))
 	setting.PrintProcessor = r.FormValue("print_processor")
 
-	saveSetting()
+	if setting.RunAtStartup != settingOld.RunAtStartup {
+		err := handleChangeRunAtStartup(setting.RunAtStartup)
+		if err != nil {
+			status = 2
+			setting.RunAtStartup = settingOld.RunAtStartup
+		}
+	}
 
-	status := 1
+	saveSetting()
 
 	if newHost != settingOld.Host || newPort != settingOld.Port {
 		restartServer(newHost, newPort)
@@ -234,4 +246,34 @@ func selected(v string, value string) string {
 		return "selected"
 	}
 	return ""
+}
+
+func handleChangeRunAtStartup(enable bool) error {
+	exePath, _ := os.Executable()
+
+	if enable {
+		err := exec.Command(exePath, "install").Run()
+		if err != nil {
+			log.Printf("Failed to install service: %v", err)
+			return err
+		}
+		err = exec.Command(exePath, "start").Run()
+		if err != nil {
+			log.Printf("Failed to start service: %v", err)
+			return err
+		}
+	} else {
+		err := exec.Command(exePath, "stop").Run()
+		if err != nil {
+			log.Printf("Failed to stop service: %v", err)
+			return err
+		}
+		err = exec.Command(exePath, "uninstall").Run()
+		if err != nil {
+			log.Printf("Failed to uninstall service: %v", err)
+			return err
+		}
+	}
+
+	return nil
 }

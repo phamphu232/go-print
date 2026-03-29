@@ -19,16 +19,16 @@ var stoppedIcon []byte
 type AppStatus int
 
 const (
-	StatusStopped AppStatus = iota
-	StatusRunning
+	StatusStopped AppStatus = iota // 0
+	StatusRunning                  // 1
 )
 
 var (
-	menuStatus *systray.MenuItem
-
+	menuStatus  *systray.MenuItem
 	menuStart   *systray.MenuItem
 	menuStop    *systray.MenuItem
 	menuRestart *systray.MenuItem
+	menuSetting *systray.MenuItem
 
 	appStatus AppStatus
 )
@@ -49,9 +49,7 @@ func updateUIByStatus(status AppStatus) {
 		menuStart.Hide()
 		menuStop.Show()
 		menuRestart.Show()
-
-		menuStop.Enable()
-		menuRestart.Enable()
+		menuSetting.Show()
 
 	case StatusStopped:
 		systray.SetIcon(stoppedIcon)
@@ -61,26 +59,23 @@ func updateUIByStatus(status AppStatus) {
 		menuStart.Show()
 		menuStop.Hide()
 		menuRestart.Hide()
-
-		menuStart.Enable()
+		menuSetting.Hide()
 	}
 }
 
 func onReady() {
-	systray.SetIcon(runningIcon)
-	systray.SetTooltip("Go Print: Running")
+	systray.SetIcon(stoppedIcon)
+	systray.SetTooltip("Go Print")
 
-	menuStatus = systray.AddMenuItem(
-		fmt.Sprintf("Listening port: %d", setting.Port),
-		"",
-	)
-
+	menuStatus = systray.AddMenuItem("Go Print: Stopped", "Server status")
 	menuStart = systray.AddMenuItem("Start", "Start server")
 	menuRestart = systray.AddMenuItem("Restart", "Restart server")
 	menuStop = systray.AddMenuItem("Stop", "Stop server")
+	menuSetting = systray.AddMenuItem("Setting", "Open Setting")
 
-	mSetting := systray.AddMenuItem("Setting", "Open Setting")
 	mExit := systray.AddMenuItem("Exit", "Exit")
+
+	updateUIByStatus(StatusStopped)
 
 	go startServer(setting.Host, setting.Port)
 
@@ -91,6 +86,7 @@ func onReady() {
 				if appStatus == StatusRunning {
 					openBrowser(fmt.Sprintf("http://%s:%d", setting.Host, setting.Port))
 				}
+
 			case <-menuStart.ClickedCh:
 				startServer(setting.Host, setting.Port)
 
@@ -102,7 +98,7 @@ func onReady() {
 					restartServer(setting.Host, setting.Port)
 				}()
 
-			case <-mSetting.ClickedCh:
+			case <-menuSetting.ClickedCh:
 				openBrowser(fmt.Sprintf("http://%s:%d/setting", setting.Host, setting.Port))
 
 			case <-mExit.ClickedCh:

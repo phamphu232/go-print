@@ -3,7 +3,9 @@ package main
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
+	"time"
 )
 
 type PCInfo struct {
@@ -17,7 +19,15 @@ type PCInfo struct {
 
 var cachedPCInfo PCInfo
 
-func handleStartup() {
+func bootstrap() {
+	loadSetting()
+	initLogger()
+	cachePCInfo()
+	makeDownloadDir()
+	startCleanupWorker()
+}
+
+func cachePCInfo() {
 	hostname, _ := os.Hostname()
 	printers, _ := getPrinters()
 
@@ -29,9 +39,22 @@ func handleStartup() {
 		OSVersion:  getOSVersion(),
 		Printers:   printers,
 	}
+}
 
-	err := os.MkdirAll("downloads", 0755)
+func makeDownloadDir() {
+	err := os.MkdirAll(filepath.Join(baseDir(), "downloads"), 0755)
 	if err != nil {
 		log.Printf("Failed to create directory: %v", err)
 	}
+}
+
+func startCleanupWorker() {
+	go func() {
+		for {
+			cleanOldFiles(filepath.Join(baseDir(), "logs"), setting.LogRetentionDays)
+			cleanOldFiles(filepath.Join(baseDir(), "downloads"), setting.LogRetentionDays)
+
+			time.Sleep(24 * time.Hour)
+		}
+	}()
 }

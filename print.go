@@ -16,6 +16,16 @@ import (
 	"time"
 )
 
+type PrinterInfo struct {
+	Name          string `json:"name"`
+	ShareName     string `json:"share_name"`
+	PrinterState  string `json:"printer_state"`
+	PrinterStatus string `json:"printer_status"`
+	Status        string `json:"status"`
+	StatusInfo    string `json:"status_info"`
+	Default       string `json:"default"`
+}
+
 func getPCInfo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
@@ -23,6 +33,20 @@ func getPCInfo(w http.ResponseWriter, r *http.Request) {
 		"status":  1,
 		"message": "OK",
 		"data":    cachedPCInfo,
+	}
+
+	json.NewEncoder(w).Encode(response)
+}
+
+func getPrinterInfo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	_, printerInfo, _ := getPrinters()
+
+	response := map[string]any{
+		"status":  1,
+		"message": "OK",
+		"data":    printerInfo,
 	}
 
 	json.NewEncoder(w).Encode(response)

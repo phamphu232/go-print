@@ -29,7 +29,7 @@ func bootstrap() {
 
 func cachePCInfo() {
 	hostname, _ := os.Hostname()
-	printers, _ := getPrinters()
+	printers, _, _ := getPrinters()
 
 	cachedPCInfo = PCInfo{
 		AppVersion: "0.0.1",

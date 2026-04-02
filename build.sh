@@ -1,6 +1,6 @@
 #!/bin/bash
 
-APP_NAME="go-print"
+APP_NAME="GoPrint"
 OUTPUT_DIR="build"
 PLATFORMS=("windows/amd64" "linux/amd64")
 # PLATFORMS=("darwin/arm64") # Builld on MacOS
@@ -14,7 +14,7 @@ for PLATFORM in "${PLATFORMS[@]}"; do
     GOOS=${PLATFORM%/*}
     GOARCH=${PLATFORM#*/}
     
-    OUTPUT_NAME="$OUTPUT_DIR/$APP_NAME-$GOOS-$GOARCH"
+    OUTPUT_NAME="$OUTPUT_DIR/$GOOS-$GOARCH/$APP_NAME"
     
     # Cấu hình LDFLAGS cơ bản để giảm dung lượng file (-s -w)
     # -s: xóa symbol table, -w: xóa debug info

@@ -1,8 +1,8 @@
 package main
 
 func bootstrap() {
-	loadSetting()
 	initLogger()
+	loadSetting()
 	setCachePCInfo()
 	makeDownloadDir()
 	startCleanupWorker()

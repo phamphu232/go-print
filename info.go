@@ -82,9 +82,7 @@ func getPrinters() ([]string, map[string]interface{}, error) {
 		psScript += ` | Select-Object Name, ShareName, PrinterState, PrinterStatus, Status, StatusInfo, Default`
 		psScript += ` | ConvertTo-Csv -NoTypeInformation`
 
-		// cmd := exec.Command("powershell", "-Command", psScript)
-		// cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		cmd := exec.Command("powershell", "-WindowStyle", "Hidden", "-Command", psScript)
+		cmd := exec.Command("powershell", "-Command", psScript)
 		out, err := cmd.Output()
 
 		if err != nil {

@@ -263,12 +263,7 @@ func handleChangeRunAtStartup(enable bool) error {
 			return err
 		}
 	} else {
-		err := exec.Command(exePath, "stop").Run()
-		if err != nil {
-			log.Printf("Failed to stop service: %v", err)
-			return err
-		}
-		err = exec.Command(exePath, "uninstall").Run()
+		err := exec.Command(exePath, "uninstall").Run()
 		if err != nil {
 			log.Printf("Failed to uninstall service: %v", err)
 			return err

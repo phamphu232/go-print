@@ -1,12 +1,47 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 )
+
+func requestParam(r *http.Request) map[string]interface{} {
+	requestParams := make(map[string]interface{})
+
+	for key, values := range r.URL.Query() {
+		if len(values) == 1 {
+			requestParams[key] = values[0]
+		} else {
+			requestParams[key] = values
+		}
+	}
+
+	contentType := r.Header.Get("Content-Type")
+	if strings.Contains(contentType, "application/json") {
+		var jsonMap map[string]interface{}
+		err := json.NewDecoder(r.Body).Decode(&jsonMap)
+		if err == nil {
+			for k, v := range jsonMap {
+				requestParams[k] = v
+			}
+		}
+	} else {
+		r.ParseForm()
+
+		for k, v := range r.Form {
+			if len(v) > 0 {
+				requestParams[k] = v[0]
+			}
+		}
+	}
+
+	return requestParams
+}
 
 func makeDownloadDir() {
 	err := os.MkdirAll(filepath.Join(baseDir(), "downloads"), 0755)

@@ -17,34 +17,7 @@ import (
 )
 
 func Print(w http.ResponseWriter, r *http.Request) {
-	requestParams := make(map[string]interface{})
-
-	for key, values := range r.URL.Query() {
-		if len(values) == 1 {
-			requestParams[key] = values[0]
-		} else {
-			requestParams[key] = values
-		}
-	}
-
-	contentType := r.Header.Get("Content-Type")
-	if strings.Contains(contentType, "application/json") {
-		var jsonMap map[string]interface{}
-		err := json.NewDecoder(r.Body).Decode(&jsonMap)
-		if err == nil {
-			for k, v := range jsonMap {
-				requestParams[k] = v
-			}
-		}
-	} else {
-		r.ParseForm()
-
-		for k, v := range r.Form {
-			if len(v) > 0 {
-				requestParams[k] = v[0]
-			}
-		}
-	}
+	requestParams := requestParam(r)
 
 	printCommand := ""
 

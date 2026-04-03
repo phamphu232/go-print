@@ -75,9 +75,9 @@ func onReady() {
 
 	mExit := systray.AddMenuItem("Exit", "Exit")
 
-	updateUIByStatus(StatusStopped)
+	updateUIByStatus(StatusRunning)
 
-	go startServer(setting.Host, setting.Port)
+	// go startServer(setting.Host, setting.Port)
 
 	go func() {
 		for {

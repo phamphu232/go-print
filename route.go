@@ -29,6 +29,10 @@ func setupRoutes() *http.ServeMux {
 	mux.HandleFunc("/pc-info", getPCInfo)
 	mux.HandleFunc("/printer-info", getPrinterInfo)
 	mux.HandleFunc("/print", Print)
+	mux.HandleFunc("/service/", )
+	mux.HandleFunc("/service/stop", stopService)
+	mux.HandleFunc("/service/restart", restartService)
+	mux.HandleFunc("/service/status", statusService)
 
 	return mux
 }

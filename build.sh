@@ -2,8 +2,8 @@
 
 APP_NAME="GoPrint"
 OUTPUT_DIR="build"
-PLATFORMS=("windows/amd64" "linux/amd64")
-# PLATFORMS=("darwin/arm64") # Builld on MacOS
+# PLATFORMS=("windows/amd64" "linux/amd64")
+PLATFORMS=("darwin/arm64") # Builld on MacOS
 
 echo "Cleaning up previous builds..."
 rm -rf "$OUTPUT_DIR"

@@ -3,6 +3,7 @@ package main
 import (
 	_ "embed"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
@@ -19,8 +20,8 @@ var stoppedIcon []byte
 type AppStatus int
 
 const (
-	StatusStopped AppStatus = iota // 0
-	StatusRunning                  // 1
+	TrayStatusStopped AppStatus = iota // 0
+	TrayStatusRunning                  // 1
 )
 
 var (
@@ -41,7 +42,7 @@ func updateUIByStatus(status AppStatus) {
 	appStatus = status
 
 	switch status {
-	case StatusRunning:
+	case TrayStatusRunning:
 		systray.SetIcon(runningIcon)
 		systray.SetTooltip("Go Print: Running")
 		menuStatus.SetTitle(fmt.Sprintf("Listen: %s:%d", setting.Host, setting.Port))
@@ -51,7 +52,7 @@ func updateUIByStatus(status AppStatus) {
 		menuRestart.Show()
 		menuSetting.Show()
 
-	case StatusStopped:
+	case TrayStatusStopped:
 		systray.SetIcon(stoppedIcon)
 		systray.SetTooltip("Go Print: Stopped")
 		menuStatus.SetTitle("Go Print: Stopped")
@@ -60,6 +61,17 @@ func updateUIByStatus(status AppStatus) {
 		menuStop.Hide()
 		menuRestart.Hide()
 		menuSetting.Hide()
+	}
+}
+
+func refreshStatus() {
+	_, err := http.Get(fmt.Sprintf("http://%s:%d/service/status", setting.Host, setting.Port))
+	if err != nil {
+		appStatus = TrayStatusStopped
+		updateUIByStatus(TrayStatusStopped)
+	} else {
+		appStatus = TrayStatusRunning
+		updateUIByStatus(TrayStatusRunning)
 	}
 }
 
@@ -75,34 +87,33 @@ func onReady() {
 
 	mExit := systray.AddMenuItem("Exit", "Exit")
 
-	updateUIByStatus(StatusRunning)
-
-	// go startServer(setting.Host, setting.Port)
+	refreshStatus()
 
 	go func() {
 		for {
 			select {
 			case <-menuStatus.ClickedCh:
-				if appStatus == StatusRunning {
+				if appStatus == TrayStatusRunning {
 					openBrowser(fmt.Sprintf("http://%s:%d", setting.Host, setting.Port))
 				}
 
 			case <-menuStart.ClickedCh:
-				startServer(setting.Host, setting.Port)
+				controlService("start")
+				refreshStatus()
 
 			case <-menuStop.ClickedCh:
-				stopServer()
+				controlService("stop")
+				refreshStatus()
 
 			case <-menuRestart.ClickedCh:
-				go func() {
-					restartServer(setting.Host, setting.Port)
-				}()
+				controlService("restart")
+				refreshStatus()
 
 			case <-menuSetting.ClickedCh:
 				openBrowser(fmt.Sprintf("http://%s:%d/setting", setting.Host, setting.Port))
 
 			case <-mExit.ClickedCh:
-				stopServer()
+				controlService("stop")
 				systray.Quit()
 				os.Exit(0)
 			}

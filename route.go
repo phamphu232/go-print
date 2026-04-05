@@ -4,6 +4,8 @@ import (
 	"embed"
 	"fmt"
 	"net/http"
+
+	"github.com/kardianos/service"
 )
 
 //go:embed favicon.ico
@@ -29,10 +31,14 @@ func setupRoutes() *http.ServeMux {
 	mux.HandleFunc("/pc-info", getPCInfo)
 	mux.HandleFunc("/printer-info", getPrinterInfo)
 	mux.HandleFunc("/print", Print)
-	mux.HandleFunc("/service/", )
-	mux.HandleFunc("/service/stop", stopService)
-	mux.HandleFunc("/service/restart", restartService)
-	mux.HandleFunc("/service/status", statusService)
+	mux.HandleFunc("/service/status", func(w http.ResponseWriter, r *http.Request) {
+		status := statusService()
+		if status == service.StatusRunning {
+			fmt.Fprintln(w, TrayStatusRunning)
+		} else {
+			fmt.Fprintln(w, TrayStatusStopped)
+		}
+	})
 
 	return mux
 }

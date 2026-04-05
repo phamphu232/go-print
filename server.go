@@ -56,8 +56,6 @@ func startServer(host string, port int) {
 		Handler: logRequestMiddleware(corsMiddleware(mux)),
 	}
 
-	updateUIByStatus(StatusRunning)
-
 	go func() {
 		log.Printf("Server started at: http://%s", targetAddr)
 		if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
@@ -83,6 +81,5 @@ func stopServer() {
 		server = nil
 	}
 
-	updateUIByStatus(StatusStopped)
 	log.Println("Server stopped")
 }

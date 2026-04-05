@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"time"
 
 	"github.com/getlantern/systray"
 )
@@ -17,32 +18,21 @@ var runningIcon []byte
 //go:embed icons/stopped.ico
 var stoppedIcon []byte
 
-type AppStatus int
-
-const (
-	TrayStatusStopped AppStatus = iota // 0
-	TrayStatusRunning                  // 1
-)
-
 var (
 	menuStatus  *systray.MenuItem
 	menuStart   *systray.MenuItem
 	menuStop    *systray.MenuItem
 	menuRestart *systray.MenuItem
 	menuSetting *systray.MenuItem
-
-	appStatus AppStatus
 )
 
-func updateUIByStatus(status AppStatus) {
-	if menuStatus == nil {
-		return
-	}
+var serviceStatus bool
 
-	appStatus = status
+func updateTrayStatus() {
+	serviceStatus = isServiceRunning()
 
-	switch status {
-	case TrayStatusRunning:
+	switch serviceStatus {
+	case true:
 		systray.SetIcon(runningIcon)
 		systray.SetTooltip("Go Print: Running")
 		menuStatus.SetTitle(fmt.Sprintf("Listen: %s:%d", setting.Host, setting.Port))
@@ -52,7 +42,7 @@ func updateUIByStatus(status AppStatus) {
 		menuRestart.Show()
 		menuSetting.Show()
 
-	case TrayStatusStopped:
+	case false:
 		systray.SetIcon(stoppedIcon)
 		systray.SetTooltip("Go Print: Stopped")
 		menuStatus.SetTitle("Go Print: Stopped")
@@ -64,15 +54,12 @@ func updateUIByStatus(status AppStatus) {
 	}
 }
 
-func refreshStatus() {
+func isServiceRunning() bool {
 	_, err := http.Get(fmt.Sprintf("http://%s:%d/service/status", setting.Host, setting.Port))
 	if err != nil {
-		appStatus = TrayStatusStopped
-		updateUIByStatus(TrayStatusStopped)
-	} else {
-		appStatus = TrayStatusRunning
-		updateUIByStatus(TrayStatusRunning)
+		return false
 	}
+	return true
 }
 
 func onReady() {
@@ -87,33 +74,43 @@ func onReady() {
 
 	mExit := systray.AddMenuItem("Exit", "Exit")
 
-	refreshStatus()
+	updateTrayStatus()
 
 	go func() {
+
 		for {
 			select {
 			case <-menuStatus.ClickedCh:
-				if appStatus == TrayStatusRunning {
+				if serviceStatus {
 					openBrowser(fmt.Sprintf("http://%s:%d", setting.Host, setting.Port))
 				}
 
 			case <-menuStart.ClickedCh:
-				controlService("start")
-				refreshStatus()
+				if !isServiceRunning() {
+					controlService("start")
+				}
+				time.Sleep(1 * time.Second)
+				updateTrayStatus()
 
 			case <-menuStop.ClickedCh:
-				controlService("stop")
-				refreshStatus()
+				if isServiceRunning() {
+					controlService("stop")
+				}
+				time.Sleep(1 * time.Second)
+				updateTrayStatus()
 
 			case <-menuRestart.ClickedCh:
 				controlService("restart")
-				refreshStatus()
+				time.Sleep(1 * time.Second)
+				updateTrayStatus()
 
 			case <-menuSetting.ClickedCh:
 				openBrowser(fmt.Sprintf("http://%s:%d/setting", setting.Host, setting.Port))
 
 			case <-mExit.ClickedCh:
-				controlService("stop")
+				if isServiceRunning() {
+					controlService("stop")
+				}
 				systray.Quit()
 				os.Exit(0)
 			}

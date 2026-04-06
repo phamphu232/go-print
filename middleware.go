@@ -19,6 +19,11 @@ func (w *statusWriter) WriteHeader(status int) {
 // logRequestMiddleware intercepts HTTP requests to log them
 func logRequestMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/ping" || r.URL.Path == "/favicon.ico" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		log.Printf("--> Incoming Request: %s %s %s", r.RemoteAddr, r.Method, r.URL.RequestURI())
 
 		start := time.Now()

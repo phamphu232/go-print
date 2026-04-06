@@ -1,17 +1,13 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/getlantern/systray"
 	"github.com/gofrs/flock"
 	"github.com/kardianos/service"
 )
-
-var mutex sync.Mutex
 
 func main() {
 	bootstrap()
@@ -27,18 +23,21 @@ func main() {
 	if !service.Interactive() {
 		s.Run()
 	} else {
-		lockPath := filepath.Join(os.TempDir(), "goprint_tray.lock")
+		exePath, _ := os.Executable()
+		lockPath := filepath.Join(filepath.Dir(exePath), ".tray.lock")
 		fileLock := flock.New(lockPath)
 		locked, err := fileLock.TryLock()
 		if err != nil || !locked {
-			fmt.Println("Program is already running!")
 			return
 		}
 		defer fileLock.Unlock()
 
-		if !isServiceRunning() {
+		if isServiceRunning() && !setting.RunAtStartup {
+			controlService("stop")
+		} else if !isServiceRunning() && setting.RunAtStartup {
 			controlService("install")
 		}
+
 		systray.Run(onReady, onExit)
 	}
 }

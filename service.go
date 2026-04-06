@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 
 	"github.com/kardianos/service"
@@ -12,10 +13,14 @@ import (
 type program struct{}
 
 func initService() service.Service {
+	exePath, _ := os.Executable()
+
 	svcConfig := &service.Config{
 		Name:        "GoPrint",
 		DisplayName: "GoPrintService",
 		Description: "Go Print Service",
+
+		WorkingDirectory: filepath.Dir(exePath),
 	}
 
 	prg := &program{}

@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -213,10 +212,8 @@ func updateSetting(w http.ResponseWriter, r *http.Request) {
 	setting.PrintProcessor = r.FormValue("print_processor")
 
 	if setting.RunAtStartup != settingOld.RunAtStartup {
-		err := handleChangeRunAtStartup(setting.RunAtStartup)
-		if err != nil {
-			status = 2
-			setting.RunAtStartup = settingOld.RunAtStartup
+		if setting.RunAtStartup {
+			controlService("install")
 		}
 	}
 
@@ -246,29 +243,4 @@ func selected(v string, value string) string {
 		return "selected"
 	}
 	return ""
-}
-
-func handleChangeRunAtStartup(enable bool) error {
-	exePath, _ := os.Executable()
-
-	if enable {
-		err := exec.Command(exePath, "install").Run()
-		if err != nil {
-			log.Printf("Failed to install service: %v", err)
-			return err
-		}
-		err = exec.Command(exePath, "start").Run()
-		if err != nil {
-			log.Printf("Failed to start service: %v", err)
-			return err
-		}
-	} else {
-		err := exec.Command(exePath, "uninstall").Run()
-		if err != nil {
-			log.Printf("Failed to uninstall service: %v", err)
-			return err
-		}
-	}
-
-	return nil
 }

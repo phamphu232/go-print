@@ -29,9 +29,15 @@ var (
 var serviceStatus bool
 
 func updateTrayStatus() {
-	serviceStatus = isServiceRunning()
+	isRunning := isServiceRunning()
 
-	switch serviceStatus {
+	if isRunning == serviceStatus {
+		return
+	}
+
+	serviceStatus = isRunning
+
+	switch isRunning {
 	case true:
 		systray.SetIcon(runningIcon)
 		systray.SetTooltip("Go Print: Running")
@@ -55,11 +61,13 @@ func updateTrayStatus() {
 }
 
 func isServiceRunning() bool {
-	_, err := http.Get(fmt.Sprintf("http://%s:%d/service/status", setting.Host, setting.Port))
+	resp, err := http.Get(fmt.Sprintf("http://%s:%d/ping", setting.Host, setting.Port))
 	if err != nil {
 		return false
 	}
-	return true
+	defer resp.Body.Close()
+
+	return resp.StatusCode == http.StatusOK
 }
 
 func onReady() {
@@ -74,10 +82,14 @@ func onReady() {
 
 	mExit := systray.AddMenuItem("Exit", "Exit")
 
-	updateTrayStatus()
+	go func() {
+		for {
+			time.Sleep(2 * time.Second)
+			updateTrayStatus()
+		}
+	}()
 
 	go func() {
-
 		for {
 			select {
 			case <-menuStatus.ClickedCh:
@@ -89,20 +101,14 @@ func onReady() {
 				if !isServiceRunning() {
 					controlService("start")
 				}
-				time.Sleep(1 * time.Second)
-				updateTrayStatus()
 
 			case <-menuStop.ClickedCh:
 				if isServiceRunning() {
 					controlService("stop")
 				}
-				time.Sleep(1 * time.Second)
-				updateTrayStatus()
 
 			case <-menuRestart.ClickedCh:
 				controlService("restart")
-				time.Sleep(1 * time.Second)
-				updateTrayStatus()
 
 			case <-menuSetting.ClickedCh:
 				openBrowser(fmt.Sprintf("http://%s:%d/setting", setting.Host, setting.Port))

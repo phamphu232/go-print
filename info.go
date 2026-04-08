@@ -83,6 +83,7 @@ func getPrinters() ([]string, map[string]interface{}, error) {
 		psScript += ` | ConvertTo-Csv -NoTypeInformation`
 
 		cmd := exec.Command("powershell", "-Command", psScript)
+		hidePowerShellWindow(cmd)
 		out, err := cmd.Output()
 
 		if err != nil {

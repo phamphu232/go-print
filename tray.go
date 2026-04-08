@@ -28,10 +28,10 @@ var (
 
 var serviceStatus bool
 
-func updateTrayStatus() {
+func updateTrayStatus(force bool) {
 	isRunning := isServiceRunning()
 
-	if isRunning == serviceStatus {
+	if !force && isRunning == serviceStatus {
 		return
 	}
 
@@ -82,10 +82,12 @@ func onReady() {
 
 	mExit := systray.AddMenuItem("Exit", "Exit")
 
+	updateTrayStatus(true)
+
 	go func() {
 		for {
 			time.Sleep(2 * time.Second)
-			updateTrayStatus()
+			updateTrayStatus(false)
 		}
 	}()
 

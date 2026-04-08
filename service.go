@@ -40,12 +40,6 @@ func (p *program) Stop(s service.Service) error {
 	return nil
 }
 
-func statusService() service.Status {
-	s := initService()
-	status, _ := s.Status()
-	return status
-}
-
 func controlService(action string) {
 	exePath, _ := os.Executable()
 

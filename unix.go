@@ -9,19 +9,27 @@ import (
 )
 
 func runAsAdmin(exePath string, args string) error {
-	switch runtime.GOOS {
+	var cmd string
 
+	switch args {
+	case "run":
+		cmd = fmt.Sprintf("%q install && %q start", exePath, exePath)
+	case "autostart":
+		cmd = fmt.Sprintf("%q stop && %q uninstall && %q install && %q start", exePath, exePath, exePath, exePath)
+	default:
+		cmd = fmt.Sprintf("%q %s", exePath, args)
+	}
+
+	switch runtime.GOOS {
 	case "darwin":
-		script := fmt.Sprintf("do shell script (quoted form of \"%s\" & \" %s\") with administrator privileges", exePath, args)
-		cmd := exec.Command("osascript", "-e", script)
-		return cmd.Run()
+		appleScript := fmt.Sprintf("do shell script \"sh -c %q\" with administrator privileges", cmd)
+		return exec.Command("osascript", "-e", appleScript).Run()
 
 	case "linux":
-		cmd := exec.Command("pkexec", exePath, args)
-		return cmd.Run()
+		return exec.Command("pkexec", "sh", "-c", cmd).Run()
 
 	default:
-		return fmt.Errorf("Error: OS not support")
+		return fmt.Errorf("error: OS %s not supported", runtime.GOOS)
 	}
 }
 

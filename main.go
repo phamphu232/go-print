@@ -35,7 +35,7 @@ func main() {
 		if isServiceRunning() && !setting.RunAtStartup {
 			controlService("stop")
 		} else if !isServiceRunning() && setting.RunAtStartup {
-			controlService("install")
+			controlService("run")
 		}
 
 		systray.Run(onReady, onExit)

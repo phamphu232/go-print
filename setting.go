@@ -211,10 +211,8 @@ func updateSetting(w http.ResponseWriter, r *http.Request) {
 	setting.LogRetentionDays, _ = strconv.Atoi(r.FormValue("log_retention_days"))
 	setting.PrintProcessor = r.FormValue("print_processor")
 
-	if setting.RunAtStartup != settingOld.RunAtStartup {
-		if setting.RunAtStartup {
-			controlService("install")
-		}
+	if setting.RunAtStartup {
+		controlService("autostart")
 	}
 
 	saveSetting()
